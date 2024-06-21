@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <!-- Chargement des fichiers statiques -->
+    {% load static %}
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('{% static "images/background.jpg" %}');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 900px;
+        }
+        .form-group {
+            margin-bottom: 70px;
+        }
+        .btn-download {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-download:hover {
+            background-color: #0056b3;
+        }
+        .loader-container {
+            display: none; /* Masqué par défaut */
+            text-align: center;
+            margin-top: 20px;
+        }
+        .progress {
+            width: 100%;
+            height: 30px;
+        }
+        .progress-bar {
+            width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title text-center">YouTube Downloader</h3>
+                <form id="downloadForm" method="post" action="{% url 'download' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="url" style="margin-bottom: 20px">YouTube URL:</label>
+                        <input style="margin-bottom:-40px" type="text" id="url" name="url" class="form-control" placeholder="Enter YouTube video URL" required>
+                    </div>
+                    <button type="submit" class="btn btn-download btn-block">Download</button>
+                </form>
+                <div id="loaderContainer" class="loader-container">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div id="progressPercentage">0%</div>
+                </div>
+                <div id="downloadMessage" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script>
+        // Fonction pour simuler la progression du téléchargement
+        function simulateProgress() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('downloadMessage').innerHTML = '<div class="alert alert-success">Téléchargement terminé.</div>';
+                    document.getElementById('loaderContainer').style.display = 'none';
+                } else {
+                    progress += 10; // Augmente de 10% pour simuler la progression
+                    document.querySelector('.progress-bar').style.width = progress + '%';
+                    document.querySelector('.progress-bar').setAttribute('aria-valuenow', progress);
+                    document.getElementById('progressPercentage').textContent = progress + '%';
+                }
+            }, 500); // Intervalle de mise à jour en millisecondes
+        }
+
+        // Intercepter la soumission du formulaire
+        document.getElementById('downloadForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Empêcher le formulaire de se soumettre normalement
+            var url = document.getElementById('url').value;
+            document.getElementById('loaderContainer').style.display = 'block'; // Afficher l'indicateur de chargement
+            document.getElementById('downloadMessage').innerHTML = ''; // Réinitialiser les messages précédents
+
+            // Simuler la progression du téléchargement
+            simulateProgress();
+
+            // Effectuer la requête de téléchargement
+            fetch("{% url 'download' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'url=' + encodeURIComponent(url)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    document.getElementById('downloadMessage').innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+                    document.getElementById('loaderContainer').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('downloadMessage').innerHTML = '<div class="alert alert-danger">Une erreur s\'est produite lors du téléchargement.</div>';
+                document.getElementById('loaderContainer').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
